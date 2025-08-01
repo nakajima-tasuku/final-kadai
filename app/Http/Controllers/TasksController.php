@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 
+use App\Models\Task;
+
 class TasksController extends Controller
 {
     /**
@@ -11,54 +13,66 @@ class TasksController extends Controller
      */
     public function index()
     {
-        //
+        if (\Auth::check()) {
+            $user = \Auth::user();
+            $tasks = $user->tasks();
+            return response()->json(['tasks' => $tasks], 200);
+        } else {
+            return response()->json(['error' => 'ログインしていません。'], 401);
+        }
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
-    {
-        //
-    }
-
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
-        //
+        $request->validate([
+            'content' => 'required',
+            'status' => 'required',
+        ]);
+
+        $request->user()->tasks()->create([
+            'content' => $request->content,
+            'status' => $request->status,
+        ]);
+
+        return response()->json(['message' => 'タスクを正常に作成できました。'], 200);
     }
 
-    /**
-     * Display the specified resource.
-     */
     public function show(string $id)
     {
-        //
+        $task = Task::findOrFail($id);
+
+        if (\Auth::id() === $task->user_id) {
+            return response()->json(['task' => $task], 200);
+        } else {
+            return response()->json(['error' => 'タスクの詳細が取得できませんでした。'], 401);
+        }
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(string $id)
-    {
-        //
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
     public function update(Request $request, string $id)
     {
-        //
+        $request->validate([
+            'content' => 'required',
+            'status' => 'required',
+        ]);
+
+        $task = Task::findOrFail($id);
+
+        $task->content = $request->content;
+        $task->status = $request->status;
+        $task->save();
+
+        return response()->json(['message' => 'タスクを正常に更新できました。'], 200);
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
     public function destroy(string $id)
     {
-        //
+        $task = Task::findOrFail($id);
+
+        if (\Auth::id() === $task->user_id) {
+            $task->delete();
+            return response()->json(['message' => 'タスクを正常に削除できました。'], 200);
+        } else {
+            return response()->json(['error' => 'タスクを削除できませんでした。'], 401);
+        }
     }
 }
